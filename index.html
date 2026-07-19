@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Soil Nutrition Analyzer</title>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+
+<style>
+:root {
+  --green-dark:  #1B4332;
+  --green:       #2D6A4F;
+  --green-light: #40916C;
+  --mint:        #74C69D;
+  --yellow:      #F4D06F;
+  --orange:      #E07A3B;
+  --red:         #C0392B;
+  --cream:       #F7F4EF;
+  --card:        #FFFFFF;
+  --border:      #E4DDD4;
+  --muted:       #8B7D72;
+  --text:        #1A1108;
+  --radius:      14px;
+  --shadow:      0 2px 20px rgba(27,67,50,.08);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--cream);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── LOGIN ── */
+#loginScreen {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 100vh; padding: 24px;
+  background: linear-gradient(150deg, #1B4332 0%, #2D6A4F 60%, #3D5A3E 100%);
+}
+.brand { text-align: center; margin-bottom: 32px; }
+.brand-icon { font-size: 3rem; margin-bottom: 8px; }
+.brand-name {
+  font-size: 1.8rem; font-weight: 700; color: #fff;
+  letter-spacing: -.5px; line-height: 1.1;
+}
+.brand-name span { color: var(--mint); }
+.brand-tag { color: rgba(255,255,255,.55); font-size: .85rem; margin-top: 4px; }
+
+.login-box {
+  background: #fff; border-radius: 20px;
+  padding: 36px 32px; width: 100%; max-width: 380px;
+  box-shadow: 0 32px 80px rgba(0,0,0,.3);
+}
+.login-box h2 { font-size: 1.1rem; font-weight: 600; color: var(--green-dark); margin-bottom: 24px; }
+.field { margin-bottom: 16px; }
+.field label {
+  display: block; font-size: .72rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); margin-bottom: 6px;
+}
+.field input {
+  width: 100%; padding: 12px 14px; border: 1.5px solid var(--border);
+  border-radius: 10px; font-size: .95rem; font-family: inherit;
+  outline: none; transition: border .2s; color: var(--text);
+}
+.field input:focus { border-color: var(--green); }
+.btn-primary {
+  width: 100%; padding: 13px; background: var(--green);
+  color: #fff; border: none; border-radius: 10px;
+  font-size: 1rem; font-weight: 600; cursor: pointer;
+  font-family: inherit; transition: background .2s; margin-top: 4px;
+}
+.btn-primary:hover { background: var(--green-light); }
+#loginErr { color: var(--red); font-size: .82rem; margin-top: 10px; text-align: center; }
+
+/* ── APP ── */
+#appScreen { display: none; }
+
+.topbar {
+  background: var(--green-dark); color: #fff;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px; height: 58px;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 12px rgba(0,0,0,.2);
+}
+.tb-brand { font-size: 1rem; font-weight: 700; }
+.tb-brand span { color: var(--mint); }
+.tb-right { display: flex; align-items: center; gap: 12px; }
+.live-pill {
+  display: flex; align-items: center; gap: 5px;
+  font-size: .7rem; font-weight: 700; letter-spacing: .06em;
+  color: var(--mint); background: rgba(116,198,157,.15);
+  padding: 4px 10px; border-radius: 20px;
+}
+.live-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--mint); animation: blink 1.5s infinite;
+}
+@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:.2;} }
+.btn-out {
+  background: none; border: 1.5px solid rgba(255,255,255,.2);
+  color: #fff; padding: 5px 12px; border-radius: 8px;
+  font-size: .78rem; cursor: pointer; font-family: inherit;
+}
+.btn-out:hover { background: rgba(255,255,255,.1); }
+
+.main { padding: 20px; max-width: 860px; margin: 0 auto; }
+
+/* ── HEALTH CARD ── */
+.health-card {
+  background: linear-gradient(135deg, var(--green-dark) 0%, #1a3a2a 100%);
+  border-radius: var(--radius); padding: 24px 22px;
+  display: flex; align-items: center; gap: 22px;
+  color: #fff; margin-bottom: 20px;
+  box-shadow: 0 8px 32px rgba(27,67,50,.3);
+}
+.ring-wrap { flex-shrink: 0; position: relative; width: 90px; height: 90px; }
+.ring-wrap svg { width: 90px; height: 90px; transform: rotate(-90deg); }
+.ring-wrap circle { fill: none; stroke-width: 8; stroke-linecap: round; }
+.rb { stroke: rgba(255,255,255,.12); }
+.rf {
+  stroke: var(--mint); stroke-dasharray: 251;
+  stroke-dashoffset: 251; transition: stroke-dashoffset 1.2s ease;
+}
+.ring-num {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%,-50%); text-align: center;
+}
+.ring-val { font-size: 1.5rem; font-weight: 700; font-family: 'DM Mono', monospace; line-height: 1; }
+.ring-of  { font-size: .65rem; opacity: .5; }
+.health-text { flex: 1; }
+.health-status { font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; }
+.health-desc   { font-size: .83rem; opacity: .7; line-height: 1.5; }
+.health-time   { font-size: .72rem; opacity: .45; margin-top: 8px; }
+
+/* ── SECTION LABEL ── */
+.sec { font-size: .68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .1em; color: var(--muted); margin: 22px 0 12px; }
+
+/* ── SENSOR GRID ── */
+.sensor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+.s-card {
+  background: var(--card); border-radius: var(--radius);
+  padding: 16px 14px; box-shadow: var(--shadow);
+  border: 1.5px solid var(--border);
+}
+.s-label { font-size: .68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted); margin-bottom: 8px; }
+.s-val { font-size: 1.6rem; font-weight: 700;
+  font-family: 'DM Mono', monospace; color: var(--green-dark); line-height: 1; }
+.s-unit { font-size: .72rem; color: var(--muted); margin-top: 2px; }
+.s-bar { height: 3px; border-radius: 2px; background: var(--border); margin-top: 10px; overflow: hidden; }
+.s-fill { height: 100%; border-radius: 2px; transition: width 1s ease; }
+
+/* ── NPK ── */
+.npk-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+.npk-card {
+  background: var(--card); border-radius: var(--radius);
+  padding: 16px 14px; box-shadow: var(--shadow);
+  border: 1.5px solid var(--border);
+  border-top: 4px solid var(--green);
+}
+.npk-card.p { border-top-color: var(--yellow); }
+.npk-card.k { border-top-color: var(--orange); }
+.npk-label { font-size: .68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted); }
+.npk-val { font-size: 1.7rem; font-weight: 700;
+  font-family: 'DM Mono', monospace; color: var(--green-dark);
+  margin: 6px 0 2px; line-height: 1; }
+.npk-unit { font-size: .7rem; color: var(--muted); }
+.npk-badge {
+  display: inline-block; font-size: .68rem; font-weight: 700;
+  padding: 2px 8px; border-radius: 20px; margin-top: 8px;
+}
+.ok   { background: #D1FAE5; color: #065F46; }
+.low  { background: #FEE2E2; color: #991B1B; }
+.high { background: #FEF3C7; color: #92400E; }
+
+/* ── AI CARDS ── */
+.ai-card {
+  background: var(--card); border-radius: var(--radius);
+  padding: 20px 18px; box-shadow: var(--shadow);
+  border: 1.5px solid var(--border); margin-bottom: 10px;
+}
+.ai-tag {
+  display: inline-block; font-size: .66rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em;
+  padding: 3px 10px; border-radius: 20px; margin-bottom: 10px;
+}
+.tag-crop { background: #D1FAE5; color: #065F46; }
+.tag-fert { background: #FEF3C7; color: #92400E; }
+.ai-title { font-size: .95rem; font-weight: 700; color: var(--green-dark); margin-bottom: 6px; }
+.ai-body  { font-size: .84rem; color: #5A4A40; line-height: 1.6; }
+.crop-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.pill {
+  background: var(--cream); border: 1.5px solid var(--border);
+  border-radius: 20px; padding: 5px 14px;
+  font-size: .8rem; font-weight: 500; color: var(--text);
+}
+.pill.top { background: var(--green); border-color: var(--green); color: #fff; font-weight: 600; }
+
+/* ── SKELETON ── */
+.skel {
+  background: linear-gradient(90deg,#ede8e0 25%,#e4ddd4 50%,#ede8e0 75%);
+  background-size: 200% 100%; animation: sh 1.4s infinite; border-radius: 6px;
+}
+@keyframes sh { 0%{background-position:200% 0;} 100%{background-position:-200% 0;} }
+
+/* ── RESPONSIVE ── */
+@media(max-width:480px){
+  .health-card { flex-direction: column; text-align: center; }
+  .npk-val { font-size: 1.4rem; }
+  .main { padding: 14px; }
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="brand">
+    <div class="brand-icon">🌱</div>
+    <div class="brand-name">Soil Nutrition<br/><span>Analyzer</span></div>
+    <div class="brand-tag">Real-time soil intelligence for farmers</div>
+  </div>
+  <div class="login-box">
+    <h2>Sign in to your account</h2>
+    <div class="field">
+      <label>Email Address</label>
+      <input type="email" id="em" placeholder="you@example.com"/>
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="pw" placeholder="••••••••"
+        onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <button class="btn-primary" onclick="doLogin()">Sign In</button>
+    <div id="loginErr"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appScreen">
+
+  <div class="topbar">
+    <div class="tb-brand">Soil Nutrition <span>Analyzer</span></div>
+    <div class="tb-right">
+      <div class="live-pill"><div class="live-dot"></div>LIVE</div>
+      <button class="btn-out" onclick="doLogout()">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- HEALTH SCORE -->
+    <div class="health-card">
+      <div class="ring-wrap">
+        <svg viewBox="0 0 90 90">
+          <circle class="rb" cx="45" cy="45" r="40"/>
+          <circle class="rf" id="ringFg" cx="45" cy="45" r="40"/>
+        </svg>
+        <div class="ring-num">
+          <div class="ring-val" id="hScore">--</div>
+          <div class="ring-of">/100</div>
+        </div>
+      </div>
+      <div class="health-text">
+        <div class="health-status" id="hStatus">Reading soil...</div>
+        <div class="health-desc"  id="hDesc">Connecting to your device. Please wait.</div>
+        <div class="health-time"  id="hTime">--</div>
+      </div>
+    </div>
+
+    <!-- READINGS -->
+    <div class="sec">Live Sensor Readings</div>
+    <div class="sensor-grid">
+
+      <div class="s-card">
+        <div class="s-label">Moisture</div>
+        <div class="s-val"  id="vMoist">--</div>
+        <div class="s-unit">% RH</div>
+        <div class="s-bar"><div class="s-fill" id="bMoist" style="width:0%;background:var(--green-light)"></div></div>
+      </div>
+
+      <div class="s-card">
+        <div class="s-label">Temperature</div>
+        <div class="s-val"  id="vTemp">--</div>
+        <div class="s-unit">°C</div>
+        <div class="s-bar"><div class="s-fill" id="bTemp" style="width:0%;background:var(--yellow)"></div></div>
+      </div>
+
+      <div class="s-card">
+        <div class="s-label">pH Level</div>
+        <div class="s-val"  id="vPH">--</div>
+        <div class="s-unit">pH (0 – 14)</div>
+        <div class="s-bar"><div class="s-fill" id="bPH" style="width:0%;background:var(--orange)"></div></div>
+      </div>
+
+      <div class="s-card">
+        <div class="s-label">Conductivity</div>
+        <div class="s-val"  id="vEC">--</div>
+        <div class="s-unit">µS/cm</div>
+        <div class="s-bar"><div class="s-fill" id="bEC" style="width:0%;background:var(--mint)"></div></div>
+      </div>
+
+    </div>
+
+    <!-- NPK -->
+    <div class="sec">Nutrient Levels (NPK)</div>
+    <div class="npk-grid">
+      <div class="npk-card">
+        <div class="npk-label">Nitrogen (N)</div>
+        <div class="npk-val" id="vN">--</div>
+        <div class="npk-unit">mg / kg</div>
+        <div class="npk-badge" id="bN">—</div>
+      </div>
+      <div class="npk-card p">
+        <div class="npk-label">Phosphorus (P)</div>
+        <div class="npk-val" id="vP">--</div>
+        <div class="npk-unit">mg / kg</div>
+        <div class="npk-badge" id="bP">—</div>
+      </div>
+      <div class="npk-card k">
+        <div class="npk-label">Potassium (K)</div>
+        <div class="npk-val" id="vK">--</div>
+        <div class="npk-unit">mg / kg</div>
+        <div class="npk-badge" id="bK">—</div>
+      </div>
+    </div>
+
+    <!-- AI RECOMMENDATIONS -->
+    <div class="sec">AI Recommendations</div>
+
+    <div class="ai-card">
+      <div class="ai-tag tag-crop">🌾 Best Crops for Your Soil</div>
+      <div class="ai-title">Top 5 Recommended Crops</div>
+      <div class="ai-body">Based on your live NPK, pH, moisture and temperature readings:</div>
+      <div class="crop-pills" id="cropPills">
+        <span class="pill skel" style="width:80px;height:30px;border:none"> </span>
+        <span class="pill skel" style="width:70px;height:30px;border:none"> </span>
+        <span class="pill skel" style="width:90px;height:30px;border:none"> </span>
+        <span class="pill skel" style="width:65px;height:30px;border:none"> </span>
+        <span class="pill skel" style="width:75px;height:30px;border:none"> </span>
+      </div>
+    </div>
+
+    <div class="ai-card">
+      <div class="ai-tag tag-fert">⚗️ Fertilizer Recommendation</div>
+      <div class="ai-title" id="fertName">Analyzing nutrient levels...</div>
+      <div class="ai-body"  id="fertReason">Please wait while we process your soil data.</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+//  FIREBASE CONFIG — your credentials
+// ════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey:            "AIzaSyDEv0Yp3IZoJSvGl647txEWiLBKfv_sTUo",
+  authDomain:        "soil-nutrition-analyzer.firebaseapp.com",
+  databaseURL:       "https://soil-nutrition-analyzer-default-rtdb.firebaseio.com",
+  projectId:         "soil-nutrition-analyzer",
+  storageBucket:     "soil-nutrition-analyzer.firebasestorage.app",
+  messagingSenderId: "194169073233",
+  appId:             "1:194169073233:web:0ee35eb35f95d6086f5270"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.database();
+
+// ── AUTH ────────────────────────────────────
+function doLogin() {
+  const e = document.getElementById('em').value.trim();
+  const p = document.getElementById('pw').value;
+  document.getElementById('loginErr').textContent = '';
+  auth.signInWithEmailAndPassword(e, p)
+    .catch(() => {
+      document.getElementById('loginErr').textContent =
+        'Incorrect email or password. Try again.';
+    });
+}
+
+function doLogout() { auth.signOut(); }
+
+auth.onAuthStateChanged(user => {
+  if (user) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appScreen').style.display   = 'block';
+    startListening();
+  } else {
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('appScreen').style.display   = 'none';
+  }
+});
+
+// ── LIVE LISTENER ────────────────────────────
+function startListening() {
+  db.ref('/sensorData').on('value', snap => {
+    const d = snap.val();
+    if (!d) return;
+    updateUI(d);
+  });
+}
+
+// ── HELPERS ──────────────────────────────────
+function fmt(v, dec=1) {
+  return (v !== undefined && v !== null && v >= 0) ? Number(v).toFixed(dec) : '--';
+}
+
+function npkBadge(val, lo, hi) {
+  if (val === undefined || val === null || val === 0)
+    return { label: 'No data', cls: 'ok' };
+  if (val < lo) return { label: '⬇ Low',    cls: 'low'  };
+  if (val > hi) return { label: '⬆ High',   cls: 'high' };
+  return              { label: '✓ Optimal', cls: 'ok'   };
+}
+
+function healthDesc(score) {
+  if (score >= 80) return 'Excellent condition. Your soil is ready for planting.';
+  if (score >= 60) return 'Good health. Small adjustments can improve your yield.';
+  if (score >= 40) return 'Moderate. Check fertilizer recommendations below.';
+  return                  'Poor soil health. Immediate action required.';
+}
+
+// ── UPDATE UI ────────────────────────────────
+function updateUI(d) {
+
+  // Moisture
+  const m = d.moisture;
+  document.getElementById('vMoist').textContent = fmt(m);
+  document.getElementById('bMoist').style.width = (m >= 0) ? Math.min(m, 100) + '%' : '0%';
+
+  // Temperature
+  const t = d.temperature;
+  document.getElementById('vTemp').textContent = fmt(t);
+  document.getElementById('bTemp').style.width = (t >= 0) ? Math.min((t/60)*100, 100) + '%' : '0%';
+
+  // pH
+  const ph = d.ph;
+  document.getElementById('vPH').textContent = fmt(ph);
+  document.getElementById('bPH').style.width  = (ph >= 0) ? (ph/14*100) + '%' : '0%';
+
+  // EC
+  const ec = d.ec;
+  document.getElementById('vEC').textContent = (ec >= 0) ? Math.round(ec) : '--';
+  document.getElementById('bEC').style.width  = (ec >= 0) ? Math.min((ec/2000)*100, 100) + '%' : '0%';
+
+  // NPK
+  const n = d.nitrogen, p = d.phosphorus, k = d.potassium;
+  document.getElementById('vN').textContent = n ?? '--';
+  document.getElementById('vP').textContent = p ?? '--';
+  document.getElementById('vK').textContent = k ?? '--';
+
+  const bn = npkBadge(n, 40, 120);
+  const bp = npkBadge(p, 25, 80);
+  const bk = npkBadge(k, 50, 150);
+
+  ['N','P','K'].forEach((x, i) => {
+    const b = [bn,bp,bk][i];
+    const el = document.getElementById('b'+x);
+    el.textContent = b.label;
+    el.className   = 'npk-badge ' + b.cls;
+  });
+
+  // Health ring — circumference of r=40 circle = 2π×40 ≈ 251
+  const score  = d.soilHealthScore  ?? 0;
+  const status = d.soilHealthStatus ?? 'Unknown';
+  document.getElementById('hScore').textContent  = score;
+  document.getElementById('hStatus').textContent = status + ' Soil';
+  document.getElementById('hDesc').textContent   = healthDesc(score);
+
+  const offset = 251 - (score / 100) * 251;
+  const ring   = document.getElementById('ringFg');
+  ring.style.strokeDashoffset = offset;
+  ring.style.stroke =
+    score >= 80 ? '#74C69D' :
+    score >= 60 ? '#F4D06F' : '#E07A3B';
+
+  // Time
+  document.getElementById('hTime').textContent =
+    'Last updated: ' + new Date().toLocaleTimeString('en-IN',
+      {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+
+  // Crop pills
+  const crops = [d.topCrop1, d.topCrop2, d.topCrop3, d.topCrop4, d.topCrop5]
+    .filter(Boolean);
+  if (crops.length) {
+    document.getElementById('cropPills').innerHTML = crops.map((c, i) =>
+      `<span class="pill${i===0?' top':''}">${i===0?'🥇 ':''}${c}</span>`
+    ).join('');
+  }
+
+  // Fertilizer
+  if (d.fertilizer) {
+    document.getElementById('fertName').textContent   = d.fertilizer;
+    document.getElementById('fertReason').textContent = d.fertilizerReason ?? '';
+  }
+}
+</script>
+</body>
+</html>
